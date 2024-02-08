@@ -5,6 +5,7 @@ import com.dev.userservice.models.SessionStatus;
 import com.dev.userservice.services.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
