@@ -37,7 +37,7 @@ public class AuthController {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<SessionStatus> validateToken(ValidateTokenRequestDto request) {
+    public ResponseEntity<SessionStatus> validateToken(@RequestBody ValidateTokenRequestDto request) {
         SessionStatus sessionStatus = authService.validate(request.getToken(), request.getUserId());
 
         return new ResponseEntity<>(sessionStatus, HttpStatus.OK);

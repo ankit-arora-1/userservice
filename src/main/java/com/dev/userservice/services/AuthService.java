@@ -7,6 +7,10 @@ import com.dev.userservice.models.User;
 import com.dev.userservice.repositories.SessionRepository;
 import com.dev.userservice.repositories.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.MacAlgorithm;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -17,8 +21,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.MultiValueMapAdapter;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -26,6 +34,7 @@ public class AuthService {
     private UserRepository userRepository;
     private SessionRepository sessionRepository;
     private BCryptPasswordEncoder bCryptPasswordEncoder;
+    private SecretKey secretKey;
 
     @Autowired
     public AuthService(UserRepository userRepository,
@@ -34,6 +43,8 @@ public class AuthService {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+
+        secretKey = Jwts.SIG.HS256.key().build();
     }
 
     // Note: This method should return a custom object containing token, headers, etc
@@ -50,7 +61,18 @@ public class AuthService {
         }
 
 
-        String token = RandomStringUtils.randomAlphanumeric(30);
+//        String token = RandomStringUtils.randomAlphanumeric(30);
+
+        Map<String, Object> jwtData = new HashMap<>();
+        jwtData.put("email", email);
+        jwtData.put("createdAt", new Date());
+        jwtData.put("expiryAt", new Date(LocalDate.now().plusDays(3).toEpochDay()));
+
+        String token = Jwts
+                .builder()
+                .claims(jwtData)
+                .signWith(secretKey)
+                .compact();
 
         Session session = new Session();
         session.setSessionStatus(SessionStatus.ACTIVE);
@@ -104,6 +126,22 @@ public class AuthService {
         if (!session.getSessionStatus().equals(SessionStatus.ACTIVE)) {
             return SessionStatus.ENDED;
         }
+
+        // Write logic for verification here
+        Jws<Claims> claimsJws = Jwts
+                .parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token);
+
+        String email = (String) claimsJws.getPayload().get("email");
+//        Long expiryAt = (Long) claimsJws.getPayload().get("expiryAt");
+
+//        if(new Date() > expiryAt) {
+//            the token has expired
+//        }
+
+        // Break for 5 minutes: 8:23 -> 8:28
 
         return SessionStatus.ACTIVE;
     }
