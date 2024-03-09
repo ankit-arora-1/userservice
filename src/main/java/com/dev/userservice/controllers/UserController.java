@@ -18,7 +18,11 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserDto> getUserDetails(@PathVariable("id") Long userId) {
-        UserDto userDto = userService.getUserDetails(userId);
+        UserDto userDto = new UserDto();
+        userDto.setEmail("test@test.com");
+
+
+//        UserDto userDto = userService.getUserDetails(userId);
 
         return new ResponseEntity<>(userDto, HttpStatus.OK);
     }
