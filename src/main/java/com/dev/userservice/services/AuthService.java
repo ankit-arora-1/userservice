@@ -1,11 +1,14 @@
 package com.dev.userservice.services;
 
+import com.dev.userservice.clients.KafkaProducerClient;
+import com.dev.userservice.dtos.SendEmailMessageDto;
 import com.dev.userservice.dtos.UserDto;
 import com.dev.userservice.models.Session;
 import com.dev.userservice.models.SessionStatus;
 import com.dev.userservice.models.User;
 import com.dev.userservice.repositories.SessionRepository;
 import com.dev.userservice.repositories.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -35,14 +38,20 @@ public class AuthService {
     private SessionRepository sessionRepository;
     private BCryptPasswordEncoder bCryptPasswordEncoder;
     private SecretKey secretKey;
+    private KafkaProducerClient kafkaProducerClient;
+    private ObjectMapper objectMapper;
 
     @Autowired
     public AuthService(UserRepository userRepository,
                        SessionRepository sessionRepository,
-                       BCryptPasswordEncoder bCryptPasswordEncoder) {
+                       BCryptPasswordEncoder bCryptPasswordEncoder,
+                       KafkaProducerClient kafkaProducerClient,
+                       ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+        this.kafkaProducerClient = kafkaProducerClient;
+        this.objectMapper = objectMapper;
 
         secretKey = Jwts.SIG.HS256.key().build();
     }
@@ -110,6 +119,20 @@ public class AuthService {
         user.setPassword(bCryptPasswordEncoder.encode(password));
 
         User savedUser = userRepository.save(user);
+
+        try {
+            SendEmailMessageDto sendEmailMessageDto = new SendEmailMessageDto();
+            sendEmailMessageDto.setTo(savedUser.getEmail());
+            sendEmailMessageDto.setFrom("ankit@gmail.com");
+            sendEmailMessageDto.setSubject("Welcome");
+            sendEmailMessageDto.setBody("Welcome to Scaler. Great to see you onboard.");
+
+            kafkaProducerClient.sendMessage("sendEmail",
+                    objectMapper.writeValueAsString(sendEmailMessageDto));
+        } catch (Exception e) {
+            System.out.println("Some exception occurred");
+        }
+
 
         return UserDto.from(savedUser);
     }
